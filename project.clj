@@ -1,4 +1,4 @@
-(defproject org.kipz/alpine-version-clj "0.0.1"
+(defproject org.kipz/alpine-version-clj "0.0.2-SNAPSHOT"
   :description "Parse and compare alpine/gentoo package versions in clojure"
   :url "https://github.com/kipz/alpine-version-clj"
   :license {:name "Eclipse Public License"
