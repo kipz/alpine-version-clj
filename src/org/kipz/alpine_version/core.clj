@@ -79,6 +79,27 @@
     (< (:number as) (:number bs))
     (< (suffix-priority (:suffix as))
        (suffix-priority (:suffix bs)))))
+
+(defn- normalize
+  "Convert to numerical as needed"
+  [v1 v2 c]
+  (let [r (c v1 v2)]
+    (cond
+      (number? r) r
+      (true? r) -1
+      (c v2 v1) 1
+      :else 0)))
+
+(defn- compare-in-order
+  "Return first non-zero result"
+  [v1 v2 & fns]
+  (or (some->>
+       fns
+       (map (partial normalize v1 v2))
+       (drop-while zero?)
+       first)
+      0))
+
 (defn- compare-suffixes
   "Alg: 3.5"
   [a b]
@@ -99,31 +120,11 @@
            (> (count as) (count bs))
            (not= "p" (:suffix (nth as (count bs))))))))))
 
-(defn- normalize
-  "Convert to numberical as needed"
-  [v1 v2 c]
-  (let [r (c v1 v2)]
-    (cond
-      (number? r) r
-      (true? r) -1
-      (c v2 v1) 1
-      :else 0)))
 
 (defn- compare-primary
   [v1 v2]
   (< (Integer/parseInt (first (:numbers v1)))
      (Integer/parseInt (first (:numbers v2)))))
-
-(defn- compare-in-order
-  "Return first non-zero result"
-  [v1 v2 & fns]
-  (boolean
-   (some->>
-    fns
-    (map (partial normalize v1 v2))
-    (drop-while zero?)
-    first
-    (> 0))))
 
 (defn- compare-number-counts
   [v1 v2]
@@ -131,27 +132,27 @@
      (count (str (rest (:numbers v2))))))
 
 (defn compare-versions
-  "Compare to debian package version strings. Returns true if v1 is before/lower than v2"
+  "Compare to alpine package version strings. Returns true if v1 is before/lower than v2"
   [v1s v2s]
   (boolean
    (let [v1 (parse-version v1s)
-         v2 (parse-version v2s)]
-     (or
-      (when (and v1 v2)
-       ;; alg: 3.2
-        (compare-in-order
-         v1 v2
-         compare-primary
-         compare-numbers
-         compare-number-counts
-         #(compare (:letter %1) (:letter %2))
-         compare-suffixes
-         #(< (count (:suffixes %1))
-             (count (:suffixes %2)))
-         #(< (:revision %1) (:revision %2))))
+         v2 (parse-version v2s)
+         result (when (and v1 v2)
+                  (compare-in-order
+                   v1 v2
+                   compare-primary
+                   compare-numbers
+                   compare-number-counts
+                   #(compare (:letter %1) (:letter %2))
+                   compare-suffixes
+                   #(< (count (:suffixes %1))
+                       (count (:suffixes %2)))
+                   #(< (:revision %1) (:revision %2))))]
+     (if (or (not result) (= 0 result))
+         ;; fall back to string comparison?
+       (< (compare v1s v2s) 0)
+       (> 0 result)))))
 
-      ;; fall back to string comparison?
-      (< (compare v1s v2s) 0)))))
 
 (def ^:private range-operators #"(\>=|\<=|\<|\>|=)")
 
